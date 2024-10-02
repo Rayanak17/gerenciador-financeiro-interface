@@ -12,8 +12,11 @@ def carregar_despesas(arquivo):
         with open(arquivo, 'r') as f:
             for linha in f:
                 dados = linha.strip().split(';')
-                if len(dados) == 4:
-                    despesas.append(dados[:3])  # Removendo o último campo vazio
+                if len(dados) == 4:  # Espera 4 campos, mas só adiciona os primeiros 3
+                    try:
+                        despesas.append([dados[0], float(dados[1]), dados[2]])  # Converte o valor para float
+                    except ValueError:
+                        continue  # Ignora linhas com dados inválidos
     return despesas
 
 # Função para salvar as despesas no arquivo
@@ -112,7 +115,9 @@ class GerenciadorFinanceiro(QMainWindow):
         self.table.setHorizontalHeaderLabels(["Descrição", "Valor", "Data"])
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.table.setAlternatingRowColors(True)
-        self.atualizar_tabela()
+
+        # Label para total (AQUI é onde a total_label deve ser inicializada)
+        self.total_label = QLabel("Total: R$ 0.00")
 
         # Layout de botões de ação (Salvar e Remover)
         action_layout = QHBoxLayout()
@@ -130,6 +135,7 @@ class GerenciadorFinanceiro(QMainWindow):
         # Adicionar layouts no layout principal
         main_layout.addLayout(form_layout)
         main_layout.addWidget(self.table)
+        main_layout.addWidget(self.total_label)  # Adiciona total_label ao layout
         main_layout.addLayout(action_layout)
 
         # Definir o widget central
@@ -137,13 +143,24 @@ class GerenciadorFinanceiro(QMainWindow):
         container.setLayout(main_layout)
         self.setCentralWidget(container)
 
+        # Atualiza o total de despesas ao iniciar
+        self.atualizar_tabela()
+
     def atualizar_tabela(self):
         """Atualiza a tabela com as despesas carregadas."""
         self.table.setRowCount(len(self.despesas))
         for i, (descricao, valor, data) in enumerate(self.despesas):
             self.table.setItem(i, 0, QTableWidgetItem(descricao))
-            self.table.setItem(i, 1, QTableWidgetItem(str(valor)))
+            self.table.setItem(i, 1, QTableWidgetItem(f"{valor:.2f}"))  # Formata o valor
             self.table.setItem(i, 2, QTableWidgetItem(data))
+
+        # Atualiza o total após atualizar a tabela
+        self.atualizar_total()
+
+    def atualizar_total(self):
+        """Calcula e atualiza o total das despesas."""
+        total = sum(valor for _, valor, _ in self.despesas)
+        self.total_label.setText(f"Total: R$ {total:.2f}")
 
     def adicionar_despesa(self):
         """Adiciona uma nova despesa à lista e à tabela."""
@@ -186,7 +203,6 @@ class GerenciadorFinanceiro(QMainWindow):
         """Salva as despesas no arquivo."""
         salvar_despesas('base_despesas.txt', self.despesas)
         QMessageBox.information(self, "Sucesso", "Despesas salvas com sucesso!")
-
 
 # Função principal
 def main():
